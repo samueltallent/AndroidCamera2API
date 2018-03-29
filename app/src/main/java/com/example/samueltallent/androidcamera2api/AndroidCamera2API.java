@@ -1,5 +1,6 @@
 package com.example.samueltallent.androidcamera2api;
 
+import android.graphics.Canvas;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.Manifest;
@@ -51,6 +52,8 @@ public class AndroidCamera2API extends AppCompatActivity {
     private static final String TAG = "AndroidCamera2API";
     private Button takePictureButton;
     private TextureView textureView;
+    private CanvasView canvasView;
+    private Canvas canvas;
     private static final SparseIntArray ORIENTATIONS = new SparseIntArray();
     static {
         ORIENTATIONS.append(Surface.ROTATION_0, 90);
@@ -79,6 +82,13 @@ public class AndroidCamera2API extends AppCompatActivity {
         setContentView(R.layout.activity_android_camera2_api);
         textureView = (TextureView) findViewById(R.id.texture);
         assert textureView != null;
+
+        //John
+        canvasView = (CanvasView) findViewById(R.id.canvas);
+        assert canvasView != null;
+        canvas = new Canvas();
+        canvasView.draw(canvas);
+
         textureView.setSurfaceTextureListener(textureListener);
         takePictureButton = (Button) findViewById(R.id.btn_takepicture);
         assert takePictureButton != null;
@@ -89,8 +99,9 @@ public class AndroidCamera2API extends AppCompatActivity {
             }
         });
 
+
         photographer = Executors.newSingleThreadScheduledExecutor();
-        photographer.scheduleAtFixedRate(new Capture(), 0, 5000, TimeUnit.MILLISECONDS);
+        //photographer.scheduleAtFixedRate(new Capture(), 0, 5000, TimeUnit.MILLISECONDS);
 
     }
     TextureView.SurfaceTextureListener textureListener = new TextureView.SurfaceTextureListener() {
