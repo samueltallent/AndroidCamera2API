@@ -1,5 +1,6 @@
 package com.example.samueltallent.androidcamera2api;
 
+import android.graphics.Canvas;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.Manifest;
@@ -31,7 +32,6 @@ import android.util.SparseIntArray;
 import android.view.Surface;
 import android.view.TextureView;
 import android.view.View;
-import android.widget.Button;
 import android.widget.Toast;
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -45,12 +45,15 @@ import java.util.List;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import org.opencv.android.OpenCVLoader;
+import android.graphics.Bitmap;
 
 public class AndroidCamera2API extends AppCompatActivity {
 
     private static final String TAG = "AndroidCamera2API";
-    private Button takePictureButton;
     private TextureView textureView;
+    private CanvasView canvasView;
+    private Canvas canvas;
     private static final SparseIntArray ORIENTATIONS = new SparseIntArray();
     static {
         ORIENTATIONS.append(Surface.ROTATION_0, 90);
@@ -79,19 +82,21 @@ public class AndroidCamera2API extends AppCompatActivity {
         setContentView(R.layout.activity_android_camera2_api);
         textureView = (TextureView) findViewById(R.id.texture);
         assert textureView != null;
+
+        //John
+        canvasView = (CanvasView) findViewById(R.id.canvas);
+        assert canvasView != null;
+        canvas = new Canvas();
+        canvasView.draw(canvas);
+
         textureView.setSurfaceTextureListener(textureListener);
-        takePictureButton = (Button) findViewById(R.id.btn_takepicture);
-        assert takePictureButton != null;
-        takePictureButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                takePicture();
-            }
-        });
 
         photographer = Executors.newSingleThreadScheduledExecutor();
         photographer.scheduleAtFixedRate(new Capture(), 0, 5000, TimeUnit.MILLISECONDS);
 
+        if (!OpenCVLoader.initDebug()) {
+            Log.e(this.getClass().getSimpleName(), "  OpenCVLoader.initDebug(), not working.");
+        }
     }
     TextureView.SurfaceTextureListener textureListener = new TextureView.SurfaceTextureListener() {
         @Override
@@ -115,7 +120,6 @@ public class AndroidCamera2API extends AppCompatActivity {
         @Override
         public void onOpened(CameraDevice camera) {
             //This is called when the camera is open
-            Log.e(TAG, "onOpened");
             cameraDevice = camera;
             createCameraPreview();
         }
@@ -154,7 +158,6 @@ public class AndroidCamera2API extends AppCompatActivity {
     }
     protected void takePicture() {
         if(null == cameraDevice) {
-            Log.e(TAG, "cameraDevice is null");
             return;
         }
         CameraManager manager = (CameraManager) getSystemService(Context.CAMERA_SERVICE);
@@ -184,7 +187,6 @@ public class AndroidCamera2API extends AppCompatActivity {
             ImageReader.OnImageAvailableListener readerListener = new ImageReader.OnImageAvailableListener() {
                 @Override
                 public void onImageAvailable(ImageReader reader) {
-                    Log.w(TAG, "Image Available");
                     Image image = null;
                     try {
                         image = reader.acquireLatestImage();
@@ -270,7 +272,6 @@ public class AndroidCamera2API extends AppCompatActivity {
     }
     private void openCamera() {
         CameraManager manager = (CameraManager) getSystemService(Context.CAMERA_SERVICE);
-        Log.e(TAG, "is camera open");
         try {
             cameraId = manager.getCameraIdList()[0];
             CameraCharacteristics characteristics = manager.getCameraCharacteristics(cameraId);
@@ -286,11 +287,9 @@ public class AndroidCamera2API extends AppCompatActivity {
         } catch (CameraAccessException e) {
             e.printStackTrace();
         }
-        Log.e(TAG, "openCamera X");
     }
     protected void updatePreview() {
         if(null == cameraDevice) {
-            Log.e(TAG, "updatePreview error, return");
         }
         captureRequestBuilder.set(CaptureRequest.CONTROL_MODE, CameraMetadata.CONTROL_MODE_AUTO);
         try {
@@ -322,7 +321,6 @@ public class AndroidCamera2API extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
-        Log.e(TAG, "onResume");
         startBackgroundThread();
         if (textureView.isAvailable()) {
             openCamera();
@@ -332,7 +330,6 @@ public class AndroidCamera2API extends AppCompatActivity {
     }
     @Override
     protected void onPause() {
-        Log.e(TAG, "onPause");
         //closeCamera();
         stopBackgroundThread();
         super.onPause();
@@ -342,7 +339,11 @@ public class AndroidCamera2API extends AppCompatActivity {
 
         @Override
         public void run() {
-            takePicture();
+            Bitmap screencapture = textureView.getBitmap();
+            //TODO: pass screencapture into models
+            //TODO: pass output into canvasView.setBitmap();
+            //demo: canvasView.setBitmap(screencapture);
+            canvasView.postInvalidate();
         }
     }
 }
