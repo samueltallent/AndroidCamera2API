@@ -133,6 +133,7 @@ public class AndroidCamera2API extends AppCompatActivity {
                     nonzeroy = new Mat(0, 0, type);
                     good_left_inds = new Mat(0, 0, type);
                     good_right_inds = new Mat(0, 0, type);
+                    //clear = new Mat(height,width, CvType.CV_32FC4, new Scalar(0));
                 } break;
                 default:
                 {
@@ -241,6 +242,7 @@ public class AndroidCamera2API extends AppCompatActivity {
             e.printStackTrace();
         }
     }
+
     protected void createCameraPreview() {
         try {
             SurfaceTexture texture = textureView.getSurfaceTexture();
@@ -249,6 +251,11 @@ public class AndroidCamera2API extends AppCompatActivity {
             Surface surface = new Surface(texture);
             captureRequestBuilder = cameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW);
             captureRequestBuilder.addTarget(surface);
+
+            int deviceRotation = ORIENTATIONS.get(this.getWindowManager().getDefaultDisplay().getRotation());
+            int sensorOrientation = characteristics.get(CameraCharacteristics.SENSOR_ORIENTATION);
+            captureRequestBuilder.set(CaptureRequest.JPEG_ORIENTATION, (deviceRotation + sensorOrientation + 270) % 360);
+
             cameraDevice.createCaptureSession(Arrays.asList(surface), new CameraCaptureSession.StateCallback(){
                 @Override
                 public void onConfigured(@NonNull CameraCaptureSession cameraCaptureSession) {
@@ -269,11 +276,13 @@ public class AndroidCamera2API extends AppCompatActivity {
             e.printStackTrace();
         }
     }
+
+    CameraCharacteristics characteristics;
     private void openCamera() {
         CameraManager manager = (CameraManager) getSystemService(Context.CAMERA_SERVICE);
         try {
             cameraId = manager.getCameraIdList()[0];
-            CameraCharacteristics characteristics = manager.getCameraCharacteristics(cameraId);
+            characteristics = manager.getCameraCharacteristics(cameraId);
             StreamConfigurationMap map = characteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP);
             assert map != null;
             imageDimension = map.getOutputSizes(SurfaceTexture.class)[0];
@@ -330,21 +339,24 @@ public class AndroidCamera2API extends AppCompatActivity {
         timer.schedule(new TimerTask() {
             @Override
             public void run() {
-
                 Bitmap screencapture = textureView.getBitmap();
-                screencapture = Bitmap.createScaledBitmap(screencapture, width, height, true);
+                screencapture = Bitmap.createScaledBitmap(screencapture, height, width, true);
                 Utils.bitmapToMat(screencapture, img);
                 Imgproc.cvtColor(img,img,Imgproc.COLOR_BGRA2RGB);
-                //processImage(img); //TODO:test on actual device with correct input
-                result = img.clone(); //remove once processImage works
-                Imgproc.cvtColor(result,result,Imgproc.COLOR_RGB2BGRA);
+                img = img.t();
+                processImage(img);
+                result = result.t();
+                Log.e("size", Integer.toString(((0) & ((1 << 3) - 1)) + (((1)-1) << 3)));
+                Log.e("size", Integer.toString(((0) & ((1 << 3) - 1)) + (((3)-1) << 3)));
+                Log.e("size", Integer.toString(((0) & ((1 << 3) - 1)) + (((4)-1) << 3)));
+                Imgproc.cvtColor(result,result,Imgproc.COLOR_RGBA2BGRA);
                 Utils.matToBitmap(result, screencapture);
                 screencapture = Bitmap.createScaledBitmap(screencapture, textureView.getWidth(), textureView.getHeight(), true);
                 canvasView.setBitmap(screencapture);
                 canvasView.postInvalidate();
 
             }
-        }, 500, 100);
+        }, 1000, 500);
     }
     @Override
     protected void onPause() {
@@ -367,9 +379,9 @@ public class AndroidCamera2API extends AppCompatActivity {
 
     float[] inputFloats;
 
-    int offset = 40;
+    int offset = width/8;
 
-    int midpoint = 160;
+    int midpoint = width/2;
     int leftx_base = 0;
     int rightx_base = 0;
     int num1,num2;
@@ -377,9 +389,9 @@ public class AndroidCamera2API extends AppCompatActivity {
     // Number of sliding windows
     int nwindows = 8;
     // Set height of windows
-    int window_height = 20;
+    int window_height = height/8;
     // Set the width of the windows +/- margin
-    int margin = 40;
+    int margin = width/8;
     // Set minimum number of pixels found to recenter window
     int minpix = 20;
 
@@ -411,8 +423,9 @@ public class AndroidCamera2API extends AppCompatActivity {
     List<Point> path = new ArrayList<>();
     int pathMaxHeight = 60;
 
-    void processImage(Mat img) {
+    Mat clear;
 
+    void processImage(Mat img) {
         // Warp perspective to top down
         warpSrc.put(0, 0, new double[]{110,40});
         warpSrc.put(1, 0, new double[]{210,40});
@@ -561,7 +574,7 @@ public class AndroidCamera2API extends AppCompatActivity {
 
         // DRAW ON LANE
 
-        warp_zero = new Mat(160, 320, CvType.CV_8U, new Scalar(0));
+        warp_zero = new Mat(height, width, CvType.CV_8U, new Scalar(0));
         layers.clear();
         layers.add(warp_zero);
         layers.add(warp_zero);
@@ -645,14 +658,18 @@ public class AndroidCamera2API extends AppCompatActivity {
 
         listOfPoints.clear();
         listOfPoints.add(matOfPointLeft);
+        //clear = new Mat(height,width, CvType.CV_32FC4, new Scalar(0));
         Imgproc.polylines(color_warp, listOfPoints, false, new Scalar(green), 5);
+        //Imgproc.polylines(clear, listOfPoints, false, new Scalar(green), 5);
 
         listOfPoints.clear();
         listOfPoints.add(matOfPointRight);
         Imgproc.polylines(color_warp, listOfPoints, false, new Scalar(green), 5);
+        //Imgproc.polylines(clear, listOfPoints, false, new Scalar(green), 5);
 
         newwarp = new Mat();
         Imgproc.warpPerspective(color_warp, newwarp, Minv, new org.opencv.core.Size(width, height), Imgproc.INTER_LINEAR);
+        //Imgproc.warpPerspective(clear, clear, Minv, new org.opencv.core.Size(width, height), Imgproc.INTER_LINEAR);
 
 
 
@@ -679,10 +696,11 @@ public class AndroidCamera2API extends AppCompatActivity {
         Point start = new Point(width/2.0, height);
         Point end = new Point(width/2.0 + 60 * Math.sin(angle), height - 60 * Math.cos(angle));
         Imgproc.line(img, start, end, new Scalar(0, 0, 255));
+        //Imgproc.line(clear, start, end, new Scalar(0, 0, 255,0));
 
         result = new Mat();
 
         Core.addWeighted(img, 1, newwarp, 0.5, 0, result);
-
+        //Core.addWeighted(clear, 1,newwarp,0.5,0,clear);
     }
 }
