@@ -332,21 +332,17 @@ public class AndroidCamera2API extends AppCompatActivity {
             public void run() {
 
                 Bitmap screencapture = textureView.getBitmap();
-                screencapture = Bitmap.createScaledBitmap(screencapture, height, width, true);
+                screencapture = Bitmap.createScaledBitmap(screencapture, width, height, true);
                 Utils.bitmapToMat(screencapture, img);
-                img = img.t();
                 Imgproc.cvtColor(img,img,Imgproc.COLOR_BGRA2RGB);
-
-                //processImage(img); TODO:test on actual device with correct input
-                result = img.clone();
-                long timer = System.currentTimeMillis();
+                //processImage(img); //TODO:test on actual device with correct input
+                result = img.clone(); //remove once processImage works
                 Imgproc.cvtColor(result,result,Imgproc.COLOR_RGB2BGRA);
-                result = result.t();
                 Utils.matToBitmap(result, screencapture);
                 screencapture = Bitmap.createScaledBitmap(screencapture, textureView.getWidth(), textureView.getHeight(), true);
                 canvasView.setBitmap(screencapture);
                 canvasView.postInvalidate();
-                Log.e("time",Long.toString(System.currentTimeMillis() - timer));
+
             }
         }, 500, 100);
     }
