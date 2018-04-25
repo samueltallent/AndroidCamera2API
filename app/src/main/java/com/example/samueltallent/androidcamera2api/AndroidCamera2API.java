@@ -1,6 +1,7 @@
 package com.example.samueltallent.androidcamera2api;
 
 import android.graphics.Canvas;
+import android.provider.MediaStore;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.Manifest;
@@ -60,6 +61,8 @@ import org.opencv.core.Scalar;
 import org.opencv.imgproc.Imgproc;
 
 import java.lang.Math;
+import java.util.Date;
+import java.text.SimpleDateFormat;
 
 import org.tensorflow.contrib.android.TensorFlowInferenceInterface;
 
@@ -340,6 +343,7 @@ public class AndroidCamera2API extends AppCompatActivity {
             @Override
             public void run() {
                 Bitmap screencapture = textureView.getBitmap();
+                //MediaStore.Images.Media.insertImage(getContentResolver(), screencapture, null , null);
                 screencapture = Bitmap.createScaledBitmap(screencapture, height, width, true);
                 Utils.bitmapToMat(screencapture, img);
                 Imgproc.cvtColor(img,img,Imgproc.COLOR_BGRA2RGB);
@@ -351,10 +355,10 @@ public class AndroidCamera2API extends AppCompatActivity {
                 screencapture = Bitmap.createScaledBitmap(screencapture, textureView.getWidth(), textureView.getHeight(), true);
                 canvasView.setBitmap(screencapture,angle);
                 canvasView.postInvalidate();
-
             }
-        }, 1000, 500);
+        }, 1000, 100);
     }
+
     @Override
     protected void onPause() {
         //closeCamera();
@@ -455,8 +459,8 @@ public class AndroidCamera2API extends AppCompatActivity {
         }
 
         // Threshold L and B channels
-        Imgproc.threshold(hls_l, l_thresh_high, 180, 255, Imgproc.THRESH_BINARY);
-        Imgproc.threshold(lab_b, b_thresh_high, 180, 255, Imgproc.THRESH_BINARY);
+        Imgproc.threshold(hls_l, l_thresh_high, 160, 255, Imgproc.THRESH_BINARY);
+        Imgproc.threshold(lab_b, b_thresh_high, 230, 255, Imgproc.THRESH_BINARY);
 
         // Get Sobel in x direction
         Imgproc.Sobel(gray, sobel_x, -1, 1, 0);
@@ -563,10 +567,10 @@ public class AndroidCamera2API extends AppCompatActivity {
 
         //Fit a second order polynomial to each
         if(rightx.rows() > 0){
-            polyfit(rightx.t(),righty,right_weights,5);
+            polyfit(righty.t(),rightx,right_weights,5);
         }
         if(leftx.rows() > 0){
-            polyfit(leftx.t(),lefty,left_weights,5);
+            polyfit(lefty.t(),leftx,left_weights,5);
         }
 
         // DRAW ON LANE
@@ -582,15 +586,18 @@ public class AndroidCamera2API extends AppCompatActivity {
         //Mat ploty = new Mat(1, width, CvType.CV_32F);
         //for (int i = 0; i < width; i++) { ploty.put(0, i, i);}
 
+        leftWidth = height;
+        rightWidth = height;
+
         Core.MinMaxLocResult leftmm = Core.minMaxLoc(leftx);
-        leftWidth = (int)(leftmm.maxVal);
+        //leftWidth = (int)(leftmm.maxVal);
         leftploty = new Mat(1,leftWidth,CvType.CV_32F);
         for (int i = 0; i < leftWidth; i++ ){leftploty.put(0,i,i);}
 
         Core.MinMaxLocResult rightmm = Core.minMaxLoc(rightx);
-        rightWidth = (int)(width - rightmm.minVal);
+        //rightWidth = (int)(width - rightmm.minVal);
         rightploty = new Mat(1,rightWidth,CvType.CV_32F);
-        for (int i = 0; i < rightWidth; i++ ){rightploty.put(0,i,i+rightmm.minVal);}
+        for (int i = 0; i < rightWidth; i++ ){rightploty.put(0,i,i);}
 
         left_fitx = new Mat(0, 0, CvType.CV_32F);
         left_fitx2 = new Mat(0, 0, CvType.CV_32F);
@@ -638,10 +645,10 @@ public class AndroidCamera2API extends AppCompatActivity {
         pts_left_list.clear();
         pts_right_list.clear();
         for (int i = 0; i < leftWidth; i++) {
-            pts_left_list.add(new Point(pts_left.get(i, 0)[0], pts_left.get(i, 1)[0]));
+            pts_left_list.add(new Point(pts_left.get(i, 1)[0], pts_left.get(i, 0)[0]));
         }
         for (int i = 0; i < rightWidth; i++) {
-            pts_right_list.add(new Point(pts_right.get(i, 0)[0], pts_right.get(i, 1)[0]));
+            pts_right_list.add(new Point(pts_right.get(i, 1)[0], pts_right.get(i, 0)[0]));
         }
 
         matOfPointLeft = new MatOfPoint();
@@ -677,16 +684,15 @@ public class AndroidCamera2API extends AppCompatActivity {
 
         // Convert angle from degrees to rads
         angle = Math.PI * resu[0] / 180;
-        Log.e("angle",Double.toString(angle * 180 / Math.PI));
 
         // Draw line from bottom middle to end point of line
-        Point start = new Point(width/2.0, height);
+        /*Point start = new Point(width/2.0, height);
         Point end = new Point(width/2.0 + 60 * Math.sin(angle), height - 60 * Math.cos(angle));
         Imgproc.line(img, start, end, new Scalar(0, 0, 255));
 
         result = new Mat();
 
-        Core.addWeighted(img, 1, newwarp, 0.5, 0, result);
+        Core.addWeighted(img, 1, newwarp, 0.5, 0, result)*/
 
         clear = new Mat(height,width,CvType.CV_8UC4);
 
