@@ -133,7 +133,7 @@ public class AndroidCamera2API extends AppCompatActivity {
                     nonzeroy = new Mat(0, 0, type);
                     good_left_inds = new Mat(0, 0, type);
                     good_right_inds = new Mat(0, 0, type);
-                    //clear = new Mat(height,width, CvType.CV_32FC4, new Scalar(0));
+                    clear = new Mat(height,width, CvType.CV_8UC4, new Scalar(0));
                 } break;
                 default:
                 {
@@ -345,14 +345,11 @@ public class AndroidCamera2API extends AppCompatActivity {
                 Imgproc.cvtColor(img,img,Imgproc.COLOR_BGRA2RGB);
                 img = img.t();
                 processImage(img);
-                result = result.t();
-                Log.e("size", Integer.toString(((0) & ((1 << 3) - 1)) + (((1)-1) << 3)));
-                Log.e("size", Integer.toString(((0) & ((1 << 3) - 1)) + (((3)-1) << 3)));
-                Log.e("size", Integer.toString(((0) & ((1 << 3) - 1)) + (((4)-1) << 3)));
-                Imgproc.cvtColor(result,result,Imgproc.COLOR_RGBA2BGRA);
-                Utils.matToBitmap(result, screencapture);
+                clear = clear.t();
+                //Imgproc.cvtColor(result,result,Imgproc.COLOR_RGB2BGRA);
+                Utils.matToBitmap(clear, screencapture);
                 screencapture = Bitmap.createScaledBitmap(screencapture, textureView.getWidth(), textureView.getHeight(), true);
-                canvasView.setBitmap(screencapture);
+                canvasView.setBitmap(screencapture,angle);
                 canvasView.postInvalidate();
 
             }
@@ -587,15 +584,11 @@ public class AndroidCamera2API extends AppCompatActivity {
 
         Core.MinMaxLocResult leftmm = Core.minMaxLoc(leftx);
         leftWidth = (int)(leftmm.maxVal);
-        //leftWidth = width;
-        //rightWidth = width;
         leftploty = new Mat(1,leftWidth,CvType.CV_32F);
         for (int i = 0; i < leftWidth; i++ ){leftploty.put(0,i,i);}
 
         Core.MinMaxLocResult rightmm = Core.minMaxLoc(rightx);
         rightWidth = (int)(width - rightmm.minVal);
-        //leftWidth = width;
-        //rightWidth = width;
         rightploty = new Mat(1,rightWidth,CvType.CV_32F);
         for (int i = 0; i < rightWidth; i++ ){rightploty.put(0,i,i+rightmm.minVal);}
 
@@ -658,20 +651,14 @@ public class AndroidCamera2API extends AppCompatActivity {
 
         listOfPoints.clear();
         listOfPoints.add(matOfPointLeft);
-        //clear = new Mat(height,width, CvType.CV_32FC4, new Scalar(0));
         Imgproc.polylines(color_warp, listOfPoints, false, new Scalar(green), 5);
-        //Imgproc.polylines(clear, listOfPoints, false, new Scalar(green), 5);
 
         listOfPoints.clear();
         listOfPoints.add(matOfPointRight);
         Imgproc.polylines(color_warp, listOfPoints, false, new Scalar(green), 5);
-        //Imgproc.polylines(clear, listOfPoints, false, new Scalar(green), 5);
 
         newwarp = new Mat();
         Imgproc.warpPerspective(color_warp, newwarp, Minv, new org.opencv.core.Size(width, height), Imgproc.INTER_LINEAR);
-        //Imgproc.warpPerspective(clear, clear, Minv, new org.opencv.core.Size(width, height), Imgproc.INTER_LINEAR);
-
-
 
         rgb = new MatOfFloat(CvType.CV_32F);
         img.convertTo(rgb,CvType.CV_32F);
@@ -681,9 +668,8 @@ public class AndroidCamera2API extends AppCompatActivity {
         inferenceInterface.fillNodeFloat(INPUT_NODE, INPUT_SIZE, inputFloats);
         inferenceInterface.runInference(new String[] {OUTPUT_NODE});
         inferenceInterface.readNodeFloat(OUTPUT_NODE, resu);
-        //Log.d("angle",Float.toString(resu[0]));
-        //angle = (double)resu[0] + 360;
 
+        //angle = (double)resu[0] + 360;
         //angle = 80; //get from NN
         //double slip_fator = 0.0014; // slip factor obtained from real data
         //double steer_ratio = 15.3;  // from http://www.edmunds.com/acura/ilx/2016/road-test-specs/
@@ -691,16 +677,29 @@ public class AndroidCamera2API extends AppCompatActivity {
 
         // Convert angle from degrees to rads
         angle = Math.PI * resu[0] / 180;
+        Log.e("angle",Double.toString(angle * 180 / Math.PI));
 
         // Draw line from bottom middle to end point of line
         Point start = new Point(width/2.0, height);
         Point end = new Point(width/2.0 + 60 * Math.sin(angle), height - 60 * Math.cos(angle));
         Imgproc.line(img, start, end, new Scalar(0, 0, 255));
-        //Imgproc.line(clear, start, end, new Scalar(0, 0, 255,0));
 
         result = new Mat();
 
         Core.addWeighted(img, 1, newwarp, 0.5, 0, result);
-        //Core.addWeighted(clear, 1,newwarp,0.5,0,clear);
+
+        clear = new Mat(height,width,CvType.CV_8UC4);
+
+        //Imgproc.line(clear, start, end, new Scalar(0, 0, 255,1));
+
+        double[] blue = {0,255,0,1};
+        for(int i = 0; i < height; i++){
+            for(int j = 0; j < width; j++) {
+                double pixelVal = newwarp.get(i,j)[0] + newwarp.get(i,j)[1] + newwarp.get(i,j)[2];
+                if(pixelVal > 0) {
+                    clear.put(i, j, blue);
+                }
+            }
+        }
     }
 }
